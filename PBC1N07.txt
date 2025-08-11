@@ -1,0 +1,148 @@
+      *----------------------------------------------------------------*
+       IDENTIFICATION DIVISION.
+      *----------------------------------------------------------------*
+       PROGRAM-ID. PBC1N08.
+       AUTHOR. JAVIER BEUZON.
+      *
+      * Programa que procesa (lee) un fichero secuencial (empleados) PS
+      * mostrando el código y nombre de empleado por pantalla
+      *----------------------------------------------------------------*
+       ENVIRONMENT DIVISION.
+      *----------------------------------------------------------------*
+       CONFIGURATION SECTION.
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT EMPLEADOS
+                  ASSIGN ENTJCL
+                  ORGANIZATION IS SEQUENTIAL
+                  ACCESS MODE IS SEQUENTIAL
+                  FILE STATUS FS-EMPLEADOS.
+
+      *----------------------------------------------------------------*
+       DATA DIVISION.
+      *----------------------------------------------------------------*
+       FILE SECTION.
+       FD  EMPLEADOS
+           LABEL RECORD IS STANDARD
+           BLOCK CONTAINS 0 RECORDS
+           RECORDING MODE IS F
+           DATA RECORD IS REG-EMPLEADOS.
+       01  REG-EMPLEADOS         PIC X(100).
+
+       WORKING-STORAGE SECTION.
+       01  WS-CONTANTES.
+           05 CTE-NOMPGM         PIC X(7)  VALUE 'PBC1N08'.
+       01  WS-VARIABLES.
+           05 AUX-TITULO         PIC X(50) VALUE SPACES.
+           05 FS-EMPLEADOS       PIC 9(2)  VALUE ZEROES.
+           05 IN-EMPLEADOS-REG.
+              10 IN-CODIGO       PIC 9(5)      VALUE ZEROES.
+              10 IN-NOMBRE       PIC X(25)     VALUE SPACES.
+              10 IN-DIRECCION    PIC X(30)     VALUE SPACES.
+              10 IN-POBLACION    PIC X(20)     VALUE SPACES.
+              10 IN-SALARIO      PIC S9(7)V9(2) COMP-3 VALUE ZEROES.
+              10 FILLER          PIC X(15)     VALUE SPACES.
+           05 IN-SALARIO-EDITADO PIC Z.ZZZ.ZZ9,99 VALUE ZEROES.
+       01  CONTADORES.
+           05 CTR-LEIDOS         PIC 9(2).
+       01  SWITCHES.
+           05 SW-EMPLEADOS       PIC X     VALUE 'N'.
+              88 END-EMPLEADOS             VALUE 'Y'.
+
+           05 SW-VACIO           PIC X     VALUE 'N'.
+              88 YES-VACIO                 VALUE 'Y'.
+
+
+      *----------------------------------------------------------------*
+       PROCEDURE DIVISION.
+      *----------------------------------------------------------------*
+           PERFORM 1000-INICIO
+           PERFORM 2000-PROCESS UNTIL END-EMPLEADOS
+           PERFORM 3000-END
+           .
+
+      *------------*
+       1000-INICIO.
+      *------------*
+           INITIALIZE CONTADORES
+
+           PERFORM 1100-ABRIR-FICHEROS
+
+           PERFORM 2100-LEER
+           IF END-EMPLEADOS
+              SET YES-VACIO TO TRUE
+           END-IF
+           .
+
+       1100-ABRIR-FICHEROS.
+      * output: modo escritura
+      * i-o   : modo lectura y escritura (no org. LINE SEQUENTIAL)
+      * input : modo lectura
+      * extend: modo escritura (añadir contenido al final)
+           OPEN INPUT EMPLEADOS REVERSED
+      *    OPEN INPUT EMPLEADOS REVERSED WITH NO REWIND
+      *    OPEN INPUT EMPLEADOS
+
+           IF FS-EMPLEADOS NOT = ZEROES
+              DISPLAY 'ERROR EN LA APERTURA :' FS-EMPLEADOS
+              PERFORM 9990-CANCELAR
+           END-IF
+           .
+
+      *------------*
+       2000-PROCESS.
+      *------------*
+           DISPLAY ' NOMBRE: ' IN-NOMBRE 'SALARIO: ' IN-SALARIO-EDITADO
+           PERFORM 2100-LEER
+           IF FS-EMPLEADOS = 10
+              SET END-EMPLEADOS TO TRUE
+           END-IF
+           .
+
+       2100-LEER.
+
+           READ EMPLEADOS INTO IN-EMPLEADOS-REG
+      *      AT END  sentencia-1
+      *      NOT AT END add 1 to contador
+      *    END-READ
+           EVALUATE FS-EMPLEADOS
+               WHEN 0
+                    ADD 1 TO CTR-LEIDOS
+                    MOVE IN-SALARIO TO IN-SALARIO-EDITADO
+               WHEN 10
+                    SET END-EMPLEADOS TO TRUE
+               WHEN OTHER
+                    DISPLAY 'Error al leer fichero : ' FS-EMPLEADOS
+                    PERFORM 9990-CANCELAR
+           END-EVALUATE
+           .
+
+      *------------*
+       3000-END.
+      *------------*
+           IF YES-VACIO
+              DISPLAY 'FICHERO DE EMPLEADOS VACÍO'
+           END-IF
+
+      *    CLOSE EMPLEADOS
+      *    IF FS-EMPLEADOS NOT = ZEROES
+      *       DISPLAY 'ERROR AL CERRAR EL FICHERO: ' FS-EMPLEADOS
+      *    END-IF
+
+           DISPLAY 'CONTADOR EMPLEADOS LEIDOS: ' CTR-LEIDOS
+
+           STOP RUN.
+
+      *------------*
+       9990-CANCELAR.
+      *------------*
+           DISPLAY '************************************'
+           DISPLAY ' SE CANCELA EL PROGRAMA Y LA CADENA '
+           DISPLAY '************************************'
+           DISPLAY ' REGISTROS LEIDOS: ' CTR-LEIDOS
+           MOVE 1001 TO RETURN-CODE
+           STOP RUN.
+
+
